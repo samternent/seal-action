@@ -53,7 +53,7 @@ jobs:
 By default the action runs:
 
 ```bash
-npm exec --yes --package=@ternent/seal-cli@latest seal
+npm exec --yes --package=@ternent/seal-cli@latest -- seal
 ```
 
 ## Advanced Usage

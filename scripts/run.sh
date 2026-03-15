@@ -38,7 +38,7 @@ proof_path="${assets_dir}/${proof_name}"
 public_key_path="${assets_dir}/${public_key_name}"
 
 run_packaged_cli() {
-  npm exec --yes "--package=${package_name}@${package_version}" seal "$@"
+  npm exec --yes "--package=${package_name}@${package_version}" -- seal "$@"
 }
 
 run_cli_override() {

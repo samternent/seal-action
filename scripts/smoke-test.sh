@@ -93,6 +93,9 @@ while (($#)); do
     --yes|--package=*)
       shift
       ;;
+    --)
+      shift
+      ;;
     seal)
       shift
       exec seal "$@"
