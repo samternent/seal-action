@@ -1,0 +1,68 @@
+name: "Seal Action"
+description: "Generate Seal manifest, proof, and public-key artifacts for an existing static asset directory using the published Seal CLI."
+author: "Sam Ternent"
+branding:
+  icon: "shield"
+  color: "gray-dark"
+
+inputs:
+  assets-directory:
+    description: "Directory containing the built static site assets to sign."
+    required: true
+  working-directory:
+    description: "Base working directory for resolving input paths."
+    required: false
+    default: "."
+  manifest-name:
+    description: "Output filename for the generated manifest."
+    required: false
+    default: "dist-manifest.json"
+  proof-name:
+    description: "Output filename for the generated proof."
+    required: false
+    default: "proof.json"
+  public-key-name:
+    description: "Output filename for the generated public-key artifact."
+    required: false
+    default: "public-key.json"
+  package-name:
+    description: "Published npm package name for the Seal CLI."
+    required: false
+    default: "@ternent/seal-cli"
+  package-version:
+    description: "Published npm package version or dist-tag to execute."
+    required: false
+    default: "latest"
+  cli-command:
+    description: "Optional trusted command prefix used to invoke the Seal CLI. Leave empty to install and run the published npm package."
+    required: false
+    default: ""
+
+outputs:
+  manifest-path:
+    description: "Absolute path to the generated manifest file."
+    value: ${{ steps.seal.outputs.manifest-path }}
+  proof-path:
+    description: "Absolute path to the generated proof file."
+    value: ${{ steps.seal.outputs.proof-path }}
+  public-key-path:
+    description: "Absolute path to the generated public-key file."
+    value: ${{ steps.seal.outputs.public-key-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: seal
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SEAL_ACTION_ASSETS_DIRECTORY: ${{ inputs.assets-directory }}
+        SEAL_ACTION_MANIFEST_NAME: ${{ inputs.manifest-name }}
+        SEAL_ACTION_PROOF_NAME: ${{ inputs.proof-name }}
+        SEAL_ACTION_PUBLIC_KEY_NAME: ${{ inputs.public-key-name }}
+        SEAL_ACTION_PACKAGE_NAME: ${{ inputs.package-name }}
+        SEAL_ACTION_PACKAGE_VERSION: ${{ inputs.package-version }}
+        SEAL_ACTION_CLI_COMMAND: ${{ inputs.cli-command }}
+      run: |
+        set -euo pipefail
+        "$GITHUB_ACTION_PATH/scripts/run.sh"
