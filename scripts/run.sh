@@ -37,23 +37,20 @@ manifest_path="${assets_dir}/${manifest_name}"
 proof_path="${assets_dir}/${proof_name}"
 public_key_path="${assets_dir}/${public_key_name}"
 
-run_cli_override() {
-  local subcommand="$1"
-  shift
+run_packaged_cli() {
+  npm exec --yes "--package=${package_name}@${package_version}" seal "$@"
+}
 
-  local escaped_args=()
-  local escaped_arg_string=""
+run_cli_override() {
+  local escaped_command=()
   local arg
+
   for arg in "$@"; do
     printf -v arg "%q" "$arg"
-    escaped_args+=("$arg")
+    escaped_command+=("$arg")
   done
 
-  if ((${#escaped_args[@]})); then
-    escaped_arg_string=" ${escaped_args[*]}"
-  fi
-
-  bash -lc "set -euo pipefail; ${cli_command} ${subcommand}${escaped_arg_string}"
+  bash -lc "set -euo pipefail; ${cli_command} ${escaped_command[*]}"
 }
 
 if [[ -z "$cli_command" ]]; then
@@ -62,14 +59,13 @@ if [[ -z "$cli_command" ]]; then
     exit 1
   fi
 
-  cli_prefix=(npm exec --yes "--package=${package_name}@${package_version}" seal)
-  "${cli_prefix[@]}" manifest create --input "$assets_dir" --out "$manifest_path" --quiet
-  "${cli_prefix[@]}" sign --input "$manifest_path" --out "$proof_path" --quiet
-  "${cli_prefix[@]}" public-key --json > "$public_key_path"
+  run_packaged_cli manifest create --input "$assets_dir" --out "$manifest_path" --quiet
+  run_packaged_cli sign --input "$manifest_path" --out "$proof_path" --quiet
+  run_packaged_cli public-key --json > "$public_key_path"
 else
-  run_cli_override "manifest create" --input "$assets_dir" --out "$manifest_path" --quiet
-  run_cli_override "sign" --input "$manifest_path" --out "$proof_path" --quiet
-  run_cli_override "public-key --json" > "$public_key_path"
+  run_cli_override manifest create --input "$assets_dir" --out "$manifest_path" --quiet
+  run_cli_override sign --input "$manifest_path" --out "$proof_path" --quiet
+  run_cli_override public-key --json > "$public_key_path"
 fi
 
 if [[ -z "${GITHUB_OUTPUT:-}" ]]; then
