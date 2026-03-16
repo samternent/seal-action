@@ -5,8 +5,8 @@ Seal Action is a publishable GitHub Marketplace action for generating Seal artif
 It creates:
 
 - a manifest describing the signed assets
-- a proof JSON signed with your Seal private key
-- a public key JSON artifact for offline verification
+- a Seal v2 proof JSON signed with your exported Seal identity
+- a Seal v2 public key JSON artifact for offline verification
 
 The action is intentionally narrow. Your workflow is still responsible for checking out the repo, setting up Node.js, and building the static directory you want to sign.
 
@@ -15,8 +15,7 @@ The action is intentionally narrow. Your workflow is still responsible for check
 - A checked-out repository via `actions/checkout`
 - Node.js on the runner via `actions/setup-node`
 - A built static asset directory, such as `dist`
-- `SEAL_PRIVATE_KEY` available in the workflow environment
-- Optionally `SEAL_PUBLIC_KEY` if you want Seal CLI to verify the key pair before signing
+- A Seal v2 identity JSON available in the workflow environment via `SEAL_IDENTITY` or `SEAL_IDENTITY_FILE`
 
 ## Quick Start
 
@@ -42,10 +41,9 @@ jobs:
         run: npm ci && npm run build
 
       - name: Generate Seal artifacts
-        uses: <owner>/seal-action@v1
+        uses: <owner>/seal-action@v2
         env:
-          SEAL_PRIVATE_KEY: ${{ secrets.SEAL_PRIVATE_KEY }}
-          SEAL_PUBLIC_KEY: ${{ secrets.SEAL_PUBLIC_KEY }}
+          SEAL_IDENTITY: ${{ secrets.SEAL_IDENTITY }}
         with:
           assets-directory: dist
 ```
@@ -62,16 +60,28 @@ If you already have `seal` available in the workspace, you can bypass npm instal
 
 ```yaml
 - name: Generate Seal artifacts with local CLI
-  uses: <owner>/seal-action@v1
+  uses: <owner>/seal-action@v2
   env:
-    SEAL_PRIVATE_KEY: ${{ secrets.SEAL_PRIVATE_KEY }}
-    SEAL_PUBLIC_KEY: ${{ secrets.SEAL_PUBLIC_KEY }}
+    SEAL_IDENTITY: ${{ secrets.SEAL_IDENTITY }}
   with:
     assets-directory: apps/proof/.vercel/output/static
     cli-command: node packages/seal-cli/bin/seal
 ```
 
 `cli-command` is intentionally an advanced escape hatch. It is executed by the shell, so only pass commands you fully trust.
+
+## Environment Contract
+
+The action passes identity configuration through to `@ternent/seal-cli` without parsing it.
+
+- `SEAL_IDENTITY`: inline exported Seal identity JSON secret
+- `SEAL_IDENTITY_FILE`: path to an exported Seal identity JSON file on disk
+
+Rules:
+
+- at least one of `SEAL_IDENTITY` or `SEAL_IDENTITY_FILE` must be set
+- if both are set, `SEAL_IDENTITY` is used
+- legacy `SEAL_PRIVATE_KEY` and `SEAL_PUBLIC_KEY` are no longer supported
 
 ## Inputs
 
@@ -117,9 +127,9 @@ Seal Action generates three files in the asset directory.
 
 ```json
 {
-  "version": "1",
+  "version": "2",
   "type": "seal-proof",
-  "algorithm": "ECDSA-P256-SHA256",
+  "algorithm": "Ed25519",
   "createdAt": "2026-03-13T00:00:00.000Z",
   "subject": {
     "kind": "manifest",
@@ -127,7 +137,7 @@ Seal Action generates three files in the asset directory.
     "hash": "sha256:..."
   },
   "signer": {
-    "publicKey": "BASE64-SPKI",
+    "publicKey": "BASE64URL-RAW-ED25519-PUBLIC-KEY",
     "keyId": "..."
   },
   "signature": "..."
@@ -138,11 +148,23 @@ Seal Action generates three files in the asset directory.
 
 ```json
 {
-  "algorithm": "ECDSA-P256-SHA256",
-  "publicKey": "BASE64-SPKI",
+  "version": "2",
+  "type": "seal-public-key",
+  "algorithm": "Ed25519",
+  "publicKey": "BASE64URL-RAW-ED25519-PUBLIC-KEY",
   "keyId": "..."
 }
 ```
+
+`publicKey` is the raw base64url Ed25519 public key emitted by Seal v2, not PEM or SPKI text.
+
+## Migration
+
+This is a breaking change from the legacy Seal v1 action contract.
+
+- Replace `SEAL_PRIVATE_KEY` / `SEAL_PUBLIC_KEY` workflow secrets with a single `SEAL_IDENTITY` secret containing the exported Seal web app identity JSON.
+- If you prefer file-based configuration, write that JSON to disk in the workflow and set `SEAL_IDENTITY_FILE` instead.
+- Release this action as a new major version such as `v2` so existing `v1` workflows keep the old contract until they migrate.
 
 ## Local Smoke Test
 
@@ -156,8 +178,11 @@ The smoke test uses stub `seal` and `npm` binaries to verify:
 
 - the default npm-backed path
 - the `cli-command` override path
+- `SEAL_IDENTITY` success
+- `SEAL_IDENTITY_FILE` success
+- `SEAL_IDENTITY` precedence when both env vars are set
 - custom output filenames
-- missing `SEAL_PRIVATE_KEY` failure
+- missing identity env failure
 - missing asset directory failure
 
 ## Maintainer Notes
@@ -172,10 +197,10 @@ Manual release flow:
 
 1. Run `./scripts/smoke-test.sh`.
 2. Commit and push the release commit.
-3. Create a Git tag such as `v1.0.0`.
+3. Create a Git tag such as `v2.0.0` for this breaking contract change.
 4. Create the GitHub Release from the tag.
 5. In the release flow, publish the action to GitHub Marketplace.
-6. Move the major tag such as `v1` to the latest compatible release.
+6. Move the major tag such as `v2` to the latest compatible release.
 
 Recommended Marketplace categories:
 

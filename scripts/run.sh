@@ -16,8 +16,8 @@ if [[ -z "$assets_dir_input" ]]; then
   exit 1
 fi
 
-if [[ -z "${SEAL_PRIVATE_KEY:-}" ]]; then
-  echo "::error::SEAL_PRIVATE_KEY must be set." >&2
+if [[ -z "${SEAL_IDENTITY:-}" && -z "${SEAL_IDENTITY_FILE:-}" ]]; then
+  echo "::error::Missing SEAL_IDENTITY or SEAL_IDENTITY_FILE environment variable. Export a Seal v2 identity JSON via SEAL_IDENTITY or point SEAL_IDENTITY_FILE at the exported identity document." >&2
   exit 1
 fi
 
